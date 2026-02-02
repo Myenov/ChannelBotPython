@@ -12,7 +12,7 @@ bot = Bot(os.getenv("TOKEN"))
 dp = Dispatcher()
 
 
-async def parse(text: str) -> Tuple[str, InlineKeyboardMarkup]:
+async def parse(text: str):
     if not text.startswith(".button:"):
         return text, None
     text_without_prefix = text[len(".button:"):]
@@ -25,10 +25,14 @@ async def parse(text: str) -> Tuple[str, InlineKeyboardMarkup]:
     post_text = text_without_prefix[last_colon_index + 1:]
 
     try:
-        json_data = json.loads(json_str)
-        buttons_list = json_data.get("button", [])
-        keyboard = []
+        json_str_cleaned = json_str.encode('ascii', 'ignore').decode('ascii')
+        json_str_cleaned = json_str_cleaned.strip()
+        json_str_cleaned = json_str.replace('\xa0', ' ').replace('\u2003', ' ').replace('\u2002', ' ')
 
+        json_data = json.loads(json_str_cleaned)
+        buttons_list = json_data.get("button", [])
+
+        keyboard = []
         for row_dict in buttons_list:
             row = []
             for url, button_text in row_dict.items():
@@ -38,16 +42,15 @@ async def parse(text: str) -> Tuple[str, InlineKeyboardMarkup]:
                 keyboard.append(row)
 
         if keyboard:
-            return post_text, InlineKeyboardMarkup(inline_keyboard=keyboard)
+            return post_text.strip(), InlineKeyboardMarkup(inline_keyboard=keyboard)
         else:
-            return post_text, None
+            return post_text.strip(), None
 
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
-        return post_text, None
-    except Exception as e:
-        print(f"Error parsing buttons: {e}")
-        return post_text, None
+        print(f"JSON string (first 100 chars): {json_str[:100]}")
+        print(f"JSON string (encoded): {json_str.encode('unicode_escape')}")
+        return post_text.strip(), None
 
 
 async def edit_post_text(mess: Message):
